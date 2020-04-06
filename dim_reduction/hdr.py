@@ -24,13 +24,13 @@ import scipy.cluster.hierarchy as sch
 
 class dimReductionParameters():
     def __init__(self):
-        self.numBands = 7  # Reduced dimensionality Size
+        #self.numBands = 7  # Reduced dimensionality Size
         self.type = 'complete'  # Type of hierarchical clustering used
         self.showH = 0  # Set to 1 to show clustering, 0 otherwise
-        self.NumCenters = 255  # Number of centers used in computing KL-divergence
+        self.NumCenters = 369.  # Number of centers used in computing KL-divergence
+        self.convFactor = 1. # conversion factor for NEON AOP data
 
-
-def dimReduction(img, Parameters=None):
+def dimReduction(img, numBands = 7, Parameters=None):
 
     numRows, numCols, numDims = img.shape
 
@@ -39,11 +39,12 @@ def dimReduction(img, Parameters=None):
 
     type = Parameters.type  # Type of Hierarchy
     showH = Parameters.showH  # Set to 1 to show clustering, 0 otherwise
-    maxNumClusters = Parameters.numBands
+    maxNumClusters = int(numBands)
     NumCenters = Parameters.NumCenters
+    convFactor = Parameters.convFactor
 
     InputData = np.reshape(img, (numRows * numCols, numDims))
-    _, KLDivergencesList, _ = computeKLDivergencesBetweenBands(InputData, NumCenters);
+    _, KLDivergencesList, _ = computeKLDivergencesBetweenBands(InputData, NumCenters, convFactor);
 
     Hierarchy = sch.linkage(KLDivergencesList, type)
 
@@ -62,9 +63,9 @@ def dimReduction(img, Parameters=None):
     return mergedData
 
 
-def computeKLDivergencesBetweenBands(InputData, NumCenters):
+def computeKLDivergencesBetweenBands(InputData, NumCenters, convFactor):
 
-    DataList = InputData / InputData.max(1).max(0)
+    DataList = InputData / convFactor
 
     # compute the histograms
     Centers = np.arange(1/(2*NumCenters), 1 + 1/NumCenters, 1/NumCenters)
@@ -80,8 +81,9 @@ def computeKLDivergencesBetweenBands(InputData, NumCenters):
     # compute KL Divergence
     lim = InputData.shape[1]
     KLDivergences = np.zeros((lim, lim))
-    for i in range(DataList.shape[1]):
-        for j in range(DataList.shape[1]):
+
+    for i in np.arange(DataList.shape[1]):
+        for j in np.arange(DataList.shape[1]):
             KLDivergences[i, j] = (hists[i, :] * np.log(hists[i, :] / hists[j, :])).sum() \
                                   + (hists[j, :] * np.log(hists[j, :] / hists[j, :])).sum()
 
@@ -89,3 +91,23 @@ def computeKLDivergencesBetweenBands(InputData, NumCenters):
     KLDivergencesList = pdist(temp)
 
     return KLDivergences, KLDivergencesList, hists
+
+
+def getClusters(InputData, numBands = 7, Parameters=None):
+
+    if Parameters is None:
+        Parameters = dimReductionParameters()
+
+    type = Parameters.type  # Type of Hierarchy
+    showH = Parameters.showH  # Set to 1 to show clustering, 0 otherwise
+    maxNumClusters = int(numBands)
+    NumCenters = Parameters.NumCenters
+    convFactor = Parameters.convFactor
+    print(InputData.shape)
+    _, KLDivergencesList, _ = computeKLDivergencesBetweenBands(InputData, NumCenters, convFactor);
+
+    Hierarchy = sch.linkage(KLDivergencesList, type)
+
+    band_clusters = sch.fcluster(Hierarchy, t=maxNumClusters, criterion='maxclust')
+
+    return(band_clusters)
