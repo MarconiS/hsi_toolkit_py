@@ -95,6 +95,9 @@ def computeKLDivergencesBetweenBands(InputData, NumCenters, convFactor):
 
 def getClusters(InputData, numBands = 7, Parameters=None):
 
+    numRows, numCols, numDims = InputData.shape
+
+
     if Parameters is None:
         Parameters = dimReductionParameters()
 
@@ -103,7 +106,9 @@ def getClusters(InputData, numBands = 7, Parameters=None):
     maxNumClusters = int(numBands)
     NumCenters = Parameters.NumCenters
     convFactor = Parameters.convFactor
+    InputData = np.reshape(InputData, (numRows * numCols, numDims))
     print(InputData.shape)
+
     _, KLDivergencesList, _ = computeKLDivergencesBetweenBands(InputData, NumCenters, convFactor);
 
     Hierarchy = sch.linkage(KLDivergencesList, type)
